@@ -1,6 +1,10 @@
 package kernel
 
-import "time"
+import (
+	"fmt"
+	"reflect"
+	"time"
+)
 
 type Event interface {
 	Version() int
@@ -12,20 +16,24 @@ type Publisher interface {
 	Publish(Event) error
 }
 
-type EventModel struct {
-	EventVersion int       `json:"event_version"`
-	EventAt      time.Time `json:"event_at"`
-	EventBy      string    `json:"event_by"`
+func eventTyper(e Event) string {
+	t := reflect.TypeOf(e)
+
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	return fmt.Sprintf("%v.%v", t.PkgPath(), t.Name())
 }
 
-func (m *EventModel) Version() int {
-	return m.EventVersion
-}
+func eventCTOR(e Event) func() Event {
+	t := reflect.TypeOf(e)
 
-func (m *EventModel) At() time.Time {
-	return m.EventAt
-}
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
 
-func (m *EventModel) By() string {
-	return m.EventBy
+	return func() Event {
+		return reflect.New(t).Interface().(Event)
+	}
 }

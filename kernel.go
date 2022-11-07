@@ -23,7 +23,7 @@ func New(options ...Option) *Kernel {
 	k := &Kernel{
 		serializer: &jsonSerializer{
 			mu:    sync.RWMutex{},
-			types: map[string]Cloner{},
+			types: map[string]func() Event{},
 		},
 		store: &store{
 			mu:      sync.RWMutex{},
@@ -80,11 +80,20 @@ func WithSerializer(s Serializer) Option {
 	}
 }
 
+func Emits(events ...Event) Option {
+	return func(k *Kernel) {
+		k.serializer.Bind(events...)
+	}
+}
+
 // TODO
 // Maybe use some form of Emitter over []Event returns.
 // Return values of []Event gets pretty cumbersome to code and read.
 
-func Decide[S State, CMD Command](decider func(s S, cmd CMD) []Event) Option {
+// TODO
+// Test for temporal coupling between options.
+
+func Decide[S State, CMD Command](decider func(s S, cmd CMD) []Event, init func() S) Option {
 	var proto CMD
 
 	return func(k *Kernel) {
@@ -93,6 +102,7 @@ func Decide[S State, CMD Command](decider func(s S, cmd CMD) []Event) Option {
 				serializer: k.serializer,
 				store:      k.store,
 				publisher:  k,
+				ctor:       init,
 			}
 			stream := cmd.Stream()
 			state, err := repo.Load(stream)

@@ -4,10 +4,11 @@ type repository[S State] struct {
 	serializer Serializer
 	store      Store
 	publisher  Publisher
+	ctor       func() S
 }
 
 func (r *repository[S]) Load(stream string) (S, error) {
-	var s S
+	s := r.ctor()
 	h, err := r.store.Load(stream)
 
 	if err != nil {

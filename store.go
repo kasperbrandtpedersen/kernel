@@ -3,18 +3,25 @@ package kernel
 import (
 	"sort"
 	"sync"
-	"time"
 )
 
+type Store interface {
+	Save(stream string, recs History) error
+	Load(stream string) (History, error)
+}
+
 type Record struct {
-	Version int       `json:"version"`
-	At      time.Time `json:"at"`
-	By      string    `json:"by"`
-	Type    string    `json:"type"`
-	Data    []byte    `json:"data"`
+	Version int
+	Data    []byte
 }
 
 type History []Record
+
+// store implements Store as a map based storage
+type store struct {
+	mu      sync.RWMutex
+	content map[string]History
+}
 
 // Len implements sort.Interface
 func (h History) Len() int {
@@ -29,17 +36,6 @@ func (h History) Swap(i, j int) {
 // Less implements sort.Interface
 func (h History) Less(i, j int) bool {
 	return h[i].Version < h[j].Version
-}
-
-type Store interface {
-	Save(stream string, recs History) error
-	Load(stream string) (History, error)
-}
-
-// store implements Store as a map based storage
-type store struct {
-	mu      sync.RWMutex
-	content map[string]History
 }
 
 func (s *store) Save(stream string, recs History) error {
